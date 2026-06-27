@@ -26,6 +26,19 @@ $EDITOR agent.env
   - `agent-bootstrap-ssh`
   - `manage-durable-notes`
 
+## Known Tested Environment
+
+This bootstrap flow was first validated on:
+
+- Raspberry Pi 5 Model B Rev 1.0
+- Debian GNU/Linux 12 bookworm
+- Linux `6.6.31+rpt-rpi-2712` on `aarch64`
+- Node.js `v18.20.4`
+- npm `9.2.0`
+- Codex CLI `0.142.3`
+
+Other Debian-like hosts should work if they provide `apt-get`, `systemd`, `sudo`, Node.js/npm, OpenSSH, tmux, and mDNS support through Avahi.
+
 ## Common Usage
 
 Use defaults:
