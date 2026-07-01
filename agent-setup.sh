@@ -19,7 +19,8 @@ Options:
   --enable-passwordless-sudo    Enable passwordless sudo for a dedicated host.
   --disable-password-auth       Disable SSH password auth after key login is ready.
   --skip-codex-login            Do not run `codex login --device-auth`.
-  --skip-codex-bootstrap        Do not run `codex exec` after installing skills.
+  --skip-codex-bootstrap        Do not configure Codex permissions and durable notes.
+  --codex-workspace PATH        Workspace to mark trusted. Defaults to $HOME.
   --dry-run                     Print shell actions without changing the host.
   -h, --help                    Show this help.
 EOF
@@ -49,6 +50,7 @@ ENABLE_PASSWORDLESS_SUDO="${ENABLE_PASSWORDLESS_SUDO:-0}"
 DISABLE_PASSWORD_AUTH="${DISABLE_PASSWORD_AUTH:-0}"
 SKIP_CODEX_LOGIN="${SKIP_CODEX_LOGIN:-0}"
 RUN_CODEX_BOOTSTRAP="${RUN_CODEX_BOOTSTRAP:-1}"
+CODEX_WORKSPACE="${CODEX_WORKSPACE:-$HOME}"
 DRY_RUN="${DRY_RUN:-0}"
 
 while (($#)); do
@@ -107,6 +109,10 @@ while (($#)); do
       RUN_CODEX_BOOTSTRAP=0
       shift
       ;;
+    --codex-workspace)
+      CODEX_WORKSPACE="${2:?missing path after --codex-workspace}"
+      shift 2
+      ;;
     --dry-run)
       DRY_RUN=1
       shift
@@ -151,10 +157,6 @@ if [[ -n "$AGENT_USER" ]]; then
   ssh_setup_args+=(--user "$AGENT_USER")
 fi
 
-if [[ "$ENABLE_PASSWORDLESS_SUDO" == "1" ]]; then
-  ssh_setup_args+=(--enable-passwordless-sudo)
-fi
-
 if [[ "$DISABLE_PASSWORD_AUTH" == "1" ]]; then
   ssh_setup_args+=(--disable-password-auth)
 else
@@ -176,6 +178,21 @@ fi
 "$repo_root/scripts/install-packages.sh"
 "$repo_root/ssh/setup-ssh.sh" "${ssh_setup_args[@]}"
 "$repo_root/scripts/install-codex.sh"
+
+if [[ "$RUN_CODEX_BOOTSTRAP" == "1" ]]; then
+  codex_setup_args=(--dedicated-host --yes --home "$HOME" --workspace "$CODEX_WORKSPACE")
+
+  if [[ "$ENABLE_PASSWORDLESS_SUDO" == "1" ]]; then
+    codex_setup_args+=(--enable-passwordless-sudo)
+  fi
+
+  if [[ "$DRY_RUN" == "1" ]]; then
+    codex_setup_args+=(--dry-run)
+  fi
+
+  "$repo_root/codex/setup-codex-permissions.sh" "${codex_setup_args[@]}"
+fi
+
 "$repo_root/scripts/install-skills.sh"
 
 if [[ "$SKIP_CODEX_LOGIN" != "1" ]]; then
@@ -183,21 +200,5 @@ if [[ "$SKIP_CODEX_LOGIN" != "1" ]]; then
     printf 'DRY would run codex login --device-auth\n'
   else
     codex login --device-auth
-  fi
-fi
-
-if [[ "$RUN_CODEX_BOOTSTRAP" == "1" ]]; then
-  yolo_args="--dedicated-host --yes"
-
-  if [[ "$ENABLE_PASSWORDLESS_SUDO" == "1" ]]; then
-    yolo_args="$yolo_args --enable-passwordless-sudo"
-  fi
-
-  prompt="Use \$agent-bootstrap-yolo-permissions and \$manage-durable-notes to configure this dedicated Codex host after the shell bootstrap. SSH/headless access has already been configured by ./ssh/setup-ssh.sh. Run each applicable script in dry-run mode first, then apply. Use these arguments when applying: yolo permissions: $yolo_args; durable notes: --home \$HOME. Preserve credentials hygiene: do not store private keys, tokens, passwords, or recovery codes in durable notes."
-
-  if [[ "$DRY_RUN" == "1" ]]; then
-    printf 'DRY would run codex exec with prompt:\n%s\n' "$prompt"
-  else
-    codex exec --sandbox danger-full-access --skip-git-repo-check "$prompt"
   fi
 fi

@@ -2,11 +2,12 @@
 
 Bootstrap scripts for a fresh Raspberry Pi or similar Linux host that will be dedicated to Codex.
 
-The setup is intentionally split into three phases:
+The setup is intentionally split into four phases:
 
 1. Shell scripts install the minimum system dependencies.
 2. `ssh/setup-ssh.sh` configures hostname, SSH/tmux access, mDNS, workstation keys, and `~/REMOTE_ACCESS.md`.
-3. Codex CLI and the remaining bootstrap skills configure durable notes and autonomous local defaults.
+3. `codex/setup-codex-permissions.sh` configures Codex CLI autonomy, trusted workspace defaults, durable notes, and optional passwordless sudo.
+4. The remaining reusable bootstrap skills are installed for future Codex sessions.
 
 ## Quick Start
 
@@ -23,8 +24,13 @@ $EDITOR agent.env
 - `git`, `nodejs`, `npm`, `python3`, `sudo`, `openssh-server`, `tmux`, `avahi-daemon`, `bubblewrap`, `curl`, and `ca-certificates`
 - Headless SSH access under `ssh/`, targeting `AGENT_NAME@AGENT_NAME.local`
 - `@openai/codex` via `npm install -g`
-- The bootstrap skills from the skills repo:
-  - `agent-bootstrap-yolo-permissions`
+- High-autonomy Codex defaults under `codex/`:
+  - `sandbox_mode = "danger-full-access"`
+  - `approval_policy = "never"`
+  - `web_search = "live"`
+  - trusted workspace entry for the configured home/workspace
+- Durable notes files: `~/AGENTS.md`, `~/CODEX_TODO.md`, and `~/codex-notes/`
+- The remaining bootstrap skills from the skills repo:
   - `manage-durable-notes`
 
 ## Known Tested Environment
@@ -81,6 +87,14 @@ AGENT_NAME=icarus ./ssh/setup-ssh.sh --dry-run
 ```
 
 See `ssh/README.md` for intent, prerequisites, validation, and recovery.
+
+Run only the Codex permissions entrypoint:
+
+```sh
+./codex/setup-codex-permissions.sh --dedicated-host --dry-run
+```
+
+See `codex/README.md` for scope, risk posture, validation, rollback, and security notes.
 
 ## Notes
 
