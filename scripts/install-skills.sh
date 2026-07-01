@@ -7,7 +7,6 @@ skills_dir="${AGENT_BOOTSTRAP_SKILLS_DIR:-$HOME/agent-bootstrap-skills}"
 target="${SKILLS_INSTALL_TARGET:-$HOME/.codex/skills}"
 skills=(
   agent-bootstrap-yolo-permissions
-  agent-bootstrap-ssh
   manage-durable-notes
 )
 
