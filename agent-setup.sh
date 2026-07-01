@@ -21,6 +21,12 @@ Options:
   --skip-codex-login            Do not run `codex login --device-auth`.
   --skip-codex-bootstrap        Do not configure Codex permissions and durable notes.
   --codex-workspace PATH        Workspace to mark trusted. Defaults to $HOME.
+  --shared-agents-guidance-url URL
+                                Raw shared AGENTS guidance source URL.
+  --shared-agents-guidance-ref REF
+                                Shared guidance ref when using the default URL.
+  --shared-agents-guidance-file PATH
+                                Local shared guidance file for testing or offline setup.
   --dry-run                     Print shell actions without changing the host.
   -h, --help                    Show this help.
 EOF
@@ -51,6 +57,9 @@ DISABLE_PASSWORD_AUTH="${DISABLE_PASSWORD_AUTH:-0}"
 SKIP_CODEX_LOGIN="${SKIP_CODEX_LOGIN:-0}"
 RUN_CODEX_BOOTSTRAP="${RUN_CODEX_BOOTSTRAP:-1}"
 CODEX_WORKSPACE="${CODEX_WORKSPACE:-$HOME}"
+SHARED_AGENT_GUIDANCE_URL="${SHARED_AGENT_GUIDANCE_URL:-}"
+SHARED_AGENT_GUIDANCE_REF="${SHARED_AGENT_GUIDANCE_REF:-main}"
+SHARED_AGENT_GUIDANCE_FILE="${SHARED_AGENT_GUIDANCE_FILE:-}"
 DRY_RUN="${DRY_RUN:-0}"
 
 while (($#)); do
@@ -113,6 +122,18 @@ while (($#)); do
       CODEX_WORKSPACE="${2:?missing path after --codex-workspace}"
       shift 2
       ;;
+    --shared-agents-guidance-url)
+      SHARED_AGENT_GUIDANCE_URL="${2:?missing URL after --shared-agents-guidance-url}"
+      shift 2
+      ;;
+    --shared-agents-guidance-ref)
+      SHARED_AGENT_GUIDANCE_REF="${2:?missing ref after --shared-agents-guidance-ref}"
+      shift 2
+      ;;
+    --shared-agents-guidance-file)
+      SHARED_AGENT_GUIDANCE_FILE="${2:?missing path after --shared-agents-guidance-file}"
+      shift 2
+      ;;
     --dry-run)
       DRY_RUN=1
       shift
@@ -143,6 +164,9 @@ fi
 
 export SKILLS_REPO_URL
 export SKILLS_REF
+export SHARED_AGENT_GUIDANCE_URL
+export SHARED_AGENT_GUIDANCE_REF
+export SHARED_AGENT_GUIDANCE_FILE
 export DRY_RUN
 
 "$repo_root/scripts/preflight.sh"
@@ -181,6 +205,15 @@ fi
 
 if [[ "$RUN_CODEX_BOOTSTRAP" == "1" ]]; then
   codex_setup_args=(--dedicated-host --yes --home "$HOME" --workspace "$CODEX_WORKSPACE")
+  codex_setup_args+=(--shared-agents-guidance-ref "$SHARED_AGENT_GUIDANCE_REF")
+
+  if [[ -n "$SHARED_AGENT_GUIDANCE_URL" ]]; then
+    codex_setup_args+=(--shared-agents-guidance-url "$SHARED_AGENT_GUIDANCE_URL")
+  fi
+
+  if [[ -n "$SHARED_AGENT_GUIDANCE_FILE" ]]; then
+    codex_setup_args+=(--shared-agents-guidance-file "$SHARED_AGENT_GUIDANCE_FILE")
+  fi
 
   if [[ "$ENABLE_PASSWORDLESS_SUDO" == "1" ]]; then
     codex_setup_args+=(--enable-passwordless-sudo)

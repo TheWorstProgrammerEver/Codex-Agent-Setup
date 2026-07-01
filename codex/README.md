@@ -62,6 +62,8 @@ This means a fresh Codex session can read and write local files without sandbox 
 - `~/.codex/config.toml`: Codex sandbox, approval, web/search, and trusted workspace defaults.
 - `~/.codex/config-backups/`: timestamped backups of existing `config.toml` before changes.
 - `~/AGENTS.md`: durable instructions future agents should read at session start.
+  The shared guidance section is managed between `BEGIN SHARED_AGENT_GUIDANCE`
+  and `END SHARED_AGENT_GUIDANCE` markers.
 - `~/CODEX_TODO.md`: durable setup tasks and parked work.
 - `~/codex-notes/`: durable notes index, tasks, decisions, state, and credential metadata.
 - `/etc/sudoers.d/90-codex-USER`: optional passwordless sudo drop-in.
@@ -71,6 +73,13 @@ This means a fresh Codex session can read and write local files without sandbox 
 `agent-setup.sh` runs this after installing the Codex CLI and after SSH/headless access is configured. That order makes the host reachable first, then applies Codex's high-autonomy defaults before installing remaining reusable skills or starting a Codex login.
 
 The script backs up an existing `~/.codex/config.toml` only when the generated config would change it. Repeated runs are intended to be safe and idempotent.
+
+The shared `AGENTS.md` block is fetched from
+`Codex-Shared-Durable-Notes/AGENTS.shared.md` by default. Override the source
+with `SHARED_AGENT_GUIDANCE_REF`, `SHARED_AGENT_GUIDANCE_URL`, or
+`SHARED_AGENT_GUIDANCE_FILE` when testing or pinning a bootstrap run. If the
+default network fetch is unavailable, the script uses its bundled fallback
+managed block instead of clobbering local host-specific guidance.
 
 ## Validation
 

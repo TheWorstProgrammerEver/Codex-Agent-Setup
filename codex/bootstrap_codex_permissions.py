@@ -9,6 +9,17 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
+
+
+SHARED_AGENT_GUIDANCE_BEGIN = "<!-- BEGIN SHARED_AGENT_GUIDANCE -->"
+SHARED_AGENT_GUIDANCE_END = "<!-- END SHARED_AGENT_GUIDANCE -->"
+DEFAULT_SHARED_AGENT_GUIDANCE_REF = "main"
+DEFAULT_SHARED_AGENT_GUIDANCE_URL_TEMPLATE = (
+    "https://raw.githubusercontent.com/"
+    "TheWorstProgrammerEver/Codex-Shared-Durable-Notes/{ref}/AGENTS.shared.md"
+)
 
 
 def toml_string(value: str) -> str:
@@ -174,12 +185,115 @@ def ensure_line(path: Path, line: str, dry_run: bool, marker: str | None = None)
             handle.write(line + "\n")
 
 
-def update_durable_notes(home: Path, dry_run: bool) -> None:
+def extract_shared_agent_guidance(text: str, source: str) -> str:
+    begin = text.find(SHARED_AGENT_GUIDANCE_BEGIN)
+    end = text.find(SHARED_AGENT_GUIDANCE_END)
+    if begin == -1 or end == -1 or end < begin:
+        raise ValueError(f"Shared AGENTS guidance markers are missing or invalid in {source}")
+    end += len(SHARED_AGENT_GUIDANCE_END)
+    return text[begin:end].rstrip() + "\n"
+
+
+def bundled_shared_agent_guidance() -> str:
+    path = Path(__file__).with_name("shared_agent_guidance_fallback.md")
+    return extract_shared_agent_guidance(path.read_text(), str(path))
+
+
+def shared_agent_guidance_url(source_url: str | None, source_ref: str) -> str:
+    if source_url:
+        return source_url
+    return DEFAULT_SHARED_AGENT_GUIDANCE_URL_TEMPLATE.format(ref=source_ref or DEFAULT_SHARED_AGENT_GUIDANCE_REF)
+
+
+def load_shared_agent_guidance(source_file: str | None, source_url: str | None, source_ref: str) -> str:
+    if source_file:
+        path = Path(source_file).expanduser()
+        print(f"Reading shared AGENTS guidance from {path}")
+        return extract_shared_agent_guidance(path.read_text(), str(path))
+
+    url = shared_agent_guidance_url(source_url, source_ref)
+    try:
+        print(f"Fetching shared AGENTS guidance from {url}")
+        with urlopen(url, timeout=10) as response:
+            charset = response.headers.get_content_charset() or "utf-8"
+            text = response.read().decode(charset)
+        return extract_shared_agent_guidance(text, url)
+    except (OSError, TimeoutError, URLError, UnicodeDecodeError, ValueError) as exc:
+        print(f"Using bundled shared AGENTS guidance fallback; could not load {url}: {exc}", file=sys.stderr)
+        return bundled_shared_agent_guidance()
+
+
+def merge_shared_agent_guidance_text(existing: str, shared_guidance: str) -> str:
+    begin = existing.find(SHARED_AGENT_GUIDANCE_BEGIN)
+    end = existing.find(SHARED_AGENT_GUIDANCE_END)
+    if begin != -1 or end != -1:
+        if begin == -1 or end == -1 or end < begin:
+            raise ValueError("Existing AGENTS.md has incomplete shared guidance markers")
+        end += len(SHARED_AGENT_GUIDANCE_END)
+        before = existing[:begin].rstrip()
+        after = existing[end:].lstrip()
+        parts = []
+        if before:
+            parts.append(before)
+        parts.append(shared_guidance.rstrip())
+        if after:
+            parts.append(after.rstrip())
+        return "\n\n".join(parts) + "\n"
+
+    if existing.startswith("# "):
+        first_line, separator, rest = existing.partition("\n")
+        if separator:
+            rest = rest.lstrip()
+            if rest:
+                return f"{first_line.rstrip()}\n\n{shared_guidance.rstrip()}\n\n{rest.rstrip()}\n"
+            return f"{first_line.rstrip()}\n\n{shared_guidance.rstrip()}\n"
+
+    if existing.strip():
+        return existing.rstrip() + "\n\n" + shared_guidance.rstrip() + "\n"
+
+    return "# Codex Home Notes\n\n" + shared_guidance.rstrip() + "\n"
+
+
+def merge_shared_agent_guidance(path: Path, shared_guidance: str, dry_run: bool) -> None:
+    existing = path.read_text() if path.exists() else "# Codex Home Notes\n\n"
+    updated = merge_shared_agent_guidance_text(existing, shared_guidance)
+    if updated == existing:
+        print(f"Shared AGENTS guidance already up to date: {path}")
+        return
+    print(f"Updating shared AGENTS guidance block in {path}")
+    if not dry_run:
+        path.write_text(updated)
+
+
+def default_agents_text(shared_guidance: str) -> str:
+    return (
+        "# Codex Home Notes\n\n"
+        f"{shared_guidance.rstrip()}\n\n"
+        "- At the start of work in this home directory, check `CODEX_TODO.md` for durable setup tasks and parked work.\n"
+        "- Treat this machine as a dedicated Codex-managed host only if the user explicitly says so.\n"
+        "- Keep credentials scoped and revocable; prefer GitHub Apps over personal access tokens for GitHub automation.\n"
+        "- Durable notes live under `~/codex-notes`; read `~/codex-notes/INDEX.md` before relying on memory from previous sessions.\n"
+    )
+
+
+def update_durable_notes(
+    home: Path,
+    dry_run: bool,
+    *,
+    shared_guidance_file: str | None,
+    shared_guidance_url_value: str | None,
+    shared_guidance_ref: str,
+) -> None:
     today = dt.date.today().isoformat()
     agents = home / "AGENTS.md"
     todos = home / "CODEX_TODO.md"
     notes = home / "codex-notes"
     agents_missing = not agents.exists()
+    shared_guidance = load_shared_agent_guidance(
+        shared_guidance_file,
+        shared_guidance_url_value,
+        shared_guidance_ref,
+    )
 
     ensure_dir(notes, dry_run)
     ensure_dir(notes / "tasks", dry_run)
@@ -218,14 +332,11 @@ def update_durable_notes(home: Path, dry_run: bool) -> None:
 
     write_if_missing(
         agents,
-        "# Codex Home Notes\n\n"
-        "- At the start of work in this home directory, check `CODEX_TODO.md` for durable setup tasks and parked work.\n"
-        "- Treat this machine as a dedicated Codex-managed host only if the user explicitly says so.\n"
-        "- Keep credentials scoped and revocable; prefer GitHub Apps over personal access tokens for GitHub automation.\n"
-        "- Durable notes live under `~/codex-notes`; read `~/codex-notes/INDEX.md` before relying on memory from previous sessions.\n",
+        default_agents_text(shared_guidance),
         dry_run,
     )
     if not agents_missing:
+        merge_shared_agent_guidance(agents, shared_guidance, dry_run)
         ensure_line(
             agents,
             "- At the start of work in this home directory, check `CODEX_TODO.md` for durable setup tasks and parked work.",
@@ -310,6 +421,21 @@ def main() -> int:
     parser.add_argument("--home", default=str(Path.home()), help="Home directory to configure.")
     parser.add_argument("--workspace", default=None, help="Workspace path to mark trusted. Defaults to --home.")
     parser.add_argument("--sudo-user", default=None, help="User for the optional sudoers drop-in. Defaults to current user.")
+    parser.add_argument(
+        "--shared-agents-guidance-url",
+        default=os.environ.get("SHARED_AGENT_GUIDANCE_URL"),
+        help="Raw URL for the shared AGENTS guidance source. Defaults to Codex-Shared-Durable-Notes on main.",
+    )
+    parser.add_argument(
+        "--shared-agents-guidance-ref",
+        default=os.environ.get("SHARED_AGENT_GUIDANCE_REF", DEFAULT_SHARED_AGENT_GUIDANCE_REF),
+        help="Shared guidance git ref used when --shared-agents-guidance-url is not set.",
+    )
+    parser.add_argument(
+        "--shared-agents-guidance-file",
+        default=os.environ.get("SHARED_AGENT_GUIDANCE_FILE"),
+        help="Local shared AGENTS guidance file to merge instead of fetching from GitHub.",
+    )
     parser.add_argument("--dedicated-host", action="store_true", help="Acknowledge this is a dedicated Codex-managed host.")
     parser.add_argument("--enable-passwordless-sudo", action="store_true", help="Install a NOPASSWD sudoers drop-in.")
     parser.add_argument("--yes", action="store_true", help="Do not ask for confirmation.")
@@ -335,7 +461,13 @@ def main() -> int:
         return 2
 
     update_codex_config(home, workspace, args.dry_run)
-    update_durable_notes(home, args.dry_run)
+    update_durable_notes(
+        home,
+        args.dry_run,
+        shared_guidance_file=args.shared_agents_guidance_file,
+        shared_guidance_url_value=args.shared_agents_guidance_url,
+        shared_guidance_ref=args.shared_agents_guidance_ref,
+    )
 
     if args.enable_passwordless_sudo:
         install_passwordless_sudo(sudo_user, args.dry_run)
