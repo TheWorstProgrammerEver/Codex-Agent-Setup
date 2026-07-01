@@ -2,10 +2,11 @@
 
 Bootstrap scripts for a fresh Raspberry Pi or similar Linux host that will be dedicated to Codex.
 
-The setup is intentionally split into two phases:
+The setup is intentionally split into three phases:
 
-1. Shell scripts install the minimum system dependencies, Codex CLI, and bootstrap skills.
-2. Codex runs the installed bootstrap skills to configure durable notes, SSH/tmux access, and autonomous local defaults.
+1. Shell scripts install the minimum system dependencies.
+2. `ssh/setup-ssh.sh` configures hostname, SSH/tmux access, mDNS, workstation keys, and `~/REMOTE_ACCESS.md`.
+3. Codex CLI and the remaining bootstrap skills configure durable notes and autonomous local defaults.
 
 ## Quick Start
 
@@ -15,15 +16,15 @@ $EDITOR agent.env
 ./agent-setup.sh
 ```
 
-`agent.env` is ignored by git. Keep machine-local values there, such as a hostname override or workstation public SSH key.
+`agent.env` is ignored by git. Keep machine-local values there, such as `AGENT_NAME` or a workstation public SSH key.
 
 ## What It Installs
 
 - `git`, `nodejs`, `npm`, `python3`, `sudo`, `openssh-server`, `tmux`, `avahi-daemon`, `bubblewrap`, `curl`, and `ca-certificates`
+- Headless SSH access under `ssh/`, targeting `AGENT_NAME@AGENT_NAME.local`
 - `@openai/codex` via `npm install -g`
 - The bootstrap skills from the skills repo:
   - `agent-bootstrap-yolo-permissions`
-  - `agent-bootstrap-ssh`
   - `manage-durable-notes`
 
 ## Known Tested Environment
@@ -53,6 +54,12 @@ Preview shell actions:
 ./agent-setup.sh --dry-run
 ```
 
+Set the intended host/user/mDNS target:
+
+```sh
+./agent-setup.sh --agent-name icarus
+```
+
 Use a specific skills repo ref:
 
 ```sh
@@ -67,8 +74,16 @@ Install only shell dependencies and skills, then stop before Codex login/bootstr
 ./agent-setup.sh --skip-codex-login --skip-codex-bootstrap
 ```
 
+Run only the SSH setup entrypoint:
+
+```sh
+AGENT_NAME=icarus ./ssh/setup-ssh.sh --dry-run
+```
+
+See `ssh/README.md` for intent, prerequisites, validation, and recovery.
+
 ## Notes
 
 - Do not commit private SSH keys, Codex auth, GitHub App private keys, API keys, tokens, passwords, or recovery codes.
 - Public SSH keys are acceptable in local `agent.env` when useful for unattended SSH setup.
-- Password SSH should remain enabled only until public-key login has been confirmed, then disabled through the SSH bootstrap skill.
+- Password SSH should remain enabled only until public-key login has been confirmed, then disabled with `ssh/setup-ssh.sh --disable-password-auth --yes`.

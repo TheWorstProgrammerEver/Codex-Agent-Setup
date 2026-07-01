@@ -11,11 +11,13 @@ Options:
   --env PATH                    Source an environment file before running.
   --skills-repo-url URL         Skills repository to clone.
   --skills-ref REF              Optional branch, tag, or SHA for the skills repo.
+  --agent-name NAME             Set host name and SSH user defaults to NAME.
   --hostname NAME               Set the host name before Codex bootstrap.
-  --ssh-public-key KEY          Public SSH key line to pass to the SSH bootstrap skill.
+  --ssh-user USER               Local SSH login user to allow.
+  --ssh-public-key KEY          Public SSH key line to install for workstation access.
   --ssh-public-key-file PATH    File containing public SSH key lines.
-  --enable-passwordless-sudo    Ask the bootstrap skills to enable passwordless sudo.
-  --disable-password-auth       Ask the SSH bootstrap skill to disable password auth.
+  --enable-passwordless-sudo    Enable passwordless sudo for a dedicated host.
+  --disable-password-auth       Disable SSH password auth after key login is ready.
   --skip-codex-login            Do not run `codex login --device-auth`.
   --skip-codex-bootstrap        Do not run `codex exec` after installing skills.
   --dry-run                     Print shell actions without changing the host.
@@ -38,7 +40,9 @@ fi
 
 SKILLS_REPO_URL="${SKILLS_REPO_URL:-https://github.com/TheWorstProgrammerEver/codex-skills.git}"
 SKILLS_REF="${SKILLS_REF:-}"
-AGENT_HOSTNAME="${AGENT_HOSTNAME:-}"
+AGENT_NAME="${AGENT_NAME:-}"
+AGENT_HOSTNAME="${AGENT_HOSTNAME:-$AGENT_NAME}"
+AGENT_USER="${AGENT_USER:-${AGENT_SSH_USER:-$AGENT_NAME}}"
 WORKSTATION_PUBLIC_KEY="${WORKSTATION_PUBLIC_KEY:-}"
 WORKSTATION_PUBLIC_KEY_FILE="${WORKSTATION_PUBLIC_KEY_FILE:-}"
 ENABLE_PASSWORDLESS_SUDO="${ENABLE_PASSWORDLESS_SUDO:-0}"
@@ -65,8 +69,18 @@ while (($#)); do
       SKILLS_REF="${2:?missing ref after --skills-ref}"
       shift 2
       ;;
+    --agent-name)
+      AGENT_NAME="${2:?missing name after --agent-name}"
+      AGENT_HOSTNAME="$AGENT_NAME"
+      AGENT_USER="$AGENT_NAME"
+      shift 2
+      ;;
     --hostname)
       AGENT_HOSTNAME="${2:?missing name after --hostname}"
+      shift 2
+      ;;
+    --ssh-user)
+      AGENT_USER="${2:?missing user after --ssh-user}"
       shift 2
       ;;
     --ssh-public-key)
@@ -109,21 +123,58 @@ while (($#)); do
   esac
 done
 
+if [[ -z "$AGENT_HOSTNAME" && -n "$AGENT_NAME" ]]; then
+  AGENT_HOSTNAME="$AGENT_NAME"
+fi
+
+if [[ -z "$AGENT_USER" && -n "${AGENT_SSH_USER:-}" ]]; then
+  AGENT_USER="$AGENT_SSH_USER"
+fi
+
+if [[ -z "$AGENT_USER" && -n "$AGENT_NAME" ]]; then
+  AGENT_USER="$AGENT_NAME"
+fi
+
 export SKILLS_REPO_URL
 export SKILLS_REF
 export DRY_RUN
 
 "$repo_root/scripts/preflight.sh"
 
+ssh_setup_args=(--yes --skip-package-install)
+
 if [[ -n "$AGENT_HOSTNAME" ]]; then
-  if [[ "$DRY_RUN" == "1" ]]; then
-    printf 'DRY would set hostname to %s\n' "$AGENT_HOSTNAME"
-  else
-    sudo hostnamectl set-hostname "$AGENT_HOSTNAME"
-  fi
+  ssh_setup_args+=(--hostname "$AGENT_HOSTNAME")
+fi
+
+if [[ -n "$AGENT_USER" ]]; then
+  ssh_setup_args+=(--user "$AGENT_USER")
+fi
+
+if [[ "$ENABLE_PASSWORDLESS_SUDO" == "1" ]]; then
+  ssh_setup_args+=(--enable-passwordless-sudo)
+fi
+
+if [[ "$DISABLE_PASSWORD_AUTH" == "1" ]]; then
+  ssh_setup_args+=(--disable-password-auth)
+else
+  ssh_setup_args+=(--enable-password-auth)
+fi
+
+if [[ -n "$WORKSTATION_PUBLIC_KEY_FILE" ]]; then
+  ssh_setup_args+=(--authorized-key-file "$WORKSTATION_PUBLIC_KEY_FILE")
+fi
+
+if [[ -n "$WORKSTATION_PUBLIC_KEY" ]]; then
+  ssh_setup_args+=(--authorized-key "$WORKSTATION_PUBLIC_KEY")
+fi
+
+if [[ "$DRY_RUN" == "1" ]]; then
+  ssh_setup_args+=(--dry-run)
 fi
 
 "$repo_root/scripts/install-packages.sh"
+"$repo_root/ssh/setup-ssh.sh" "${ssh_setup_args[@]}"
 "$repo_root/scripts/install-codex.sh"
 "$repo_root/scripts/install-skills.sh"
 
@@ -136,27 +187,13 @@ if [[ "$SKIP_CODEX_LOGIN" != "1" ]]; then
 fi
 
 if [[ "$RUN_CODEX_BOOTSTRAP" == "1" ]]; then
-  ssh_args="--yes"
   yolo_args="--dedicated-host --yes"
 
   if [[ "$ENABLE_PASSWORDLESS_SUDO" == "1" ]]; then
-    ssh_args="$ssh_args --enable-passwordless-sudo"
     yolo_args="$yolo_args --enable-passwordless-sudo"
   fi
 
-  if [[ "$DISABLE_PASSWORD_AUTH" == "1" ]]; then
-    ssh_args="$ssh_args --disable-password-auth"
-  else
-    ssh_args="$ssh_args --enable-password-auth"
-  fi
-
-  if [[ -n "$WORKSTATION_PUBLIC_KEY_FILE" ]]; then
-    ssh_args="$ssh_args --authorized-key-file $WORKSTATION_PUBLIC_KEY_FILE"
-  elif [[ -n "$WORKSTATION_PUBLIC_KEY" ]]; then
-    ssh_args="$ssh_args --authorized-key '$WORKSTATION_PUBLIC_KEY'"
-  fi
-
-  prompt="Use \$agent-bootstrap-yolo-permissions, \$manage-durable-notes, and \$agent-bootstrap-ssh to configure this dedicated Codex host. Run each applicable script in dry-run mode first, then apply. Use these arguments when applying: yolo permissions: $yolo_args; durable notes: --home \$HOME; ssh: $ssh_args. Preserve credentials hygiene: do not store private keys, tokens, passwords, or recovery codes in durable notes."
+  prompt="Use \$agent-bootstrap-yolo-permissions and \$manage-durable-notes to configure this dedicated Codex host after the shell bootstrap. SSH/headless access has already been configured by ./ssh/setup-ssh.sh. Run each applicable script in dry-run mode first, then apply. Use these arguments when applying: yolo permissions: $yolo_args; durable notes: --home \$HOME. Preserve credentials hygiene: do not store private keys, tokens, passwords, or recovery codes in durable notes."
 
   if [[ "$DRY_RUN" == "1" ]]; then
     printf 'DRY would run codex exec with prompt:\n%s\n' "$prompt"
