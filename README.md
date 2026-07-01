@@ -8,6 +8,7 @@ The setup is intentionally split into four phases:
 2. `ssh/setup-ssh.sh` configures hostname, SSH/tmux access, mDNS, workstation keys, and `~/REMOTE_ACCESS.md`.
 3. `codex/setup-codex-permissions.sh` configures Codex CLI autonomy, trusted workspace defaults, durable notes, and optional passwordless sudo.
 4. The remaining reusable bootstrap skills are installed for future Codex sessions.
+5. `mind-maintainer/` can install a systemd timer that starts fresh Codex maintenance runs for shared AGENTS guidance, durable notes, and skills.
 
 ## Quick Start
 
@@ -32,6 +33,7 @@ $EDITOR agent.env
 - Durable notes files: `~/AGENTS.md`, `~/CODEX_TODO.md`, and `~/codex-notes/`
 - The remaining bootstrap skills from the skills repo:
   - `manage-durable-notes`
+- Optional Codex Agent Mind Maintainer schedule under `mind-maintainer/`
 
 ## Known Tested Environment
 
@@ -95,6 +97,15 @@ Run only the Codex permissions entrypoint:
 ```
 
 See `codex/README.md` for scope, risk posture, validation, rollback, and security notes.
+
+Preview the Codex Agent Mind Maintainer schedule:
+
+```sh
+./mind-maintainer/scripts/install-schedule.sh --dry-run
+```
+
+See `mind-maintainer/README.md` for purpose, manual runs, schedule
+install/uninstall, logs, rollback, and the safety model.
 
 ## Notes
 
