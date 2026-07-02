@@ -17,12 +17,12 @@ $EDITOR agent.env
 ./agent-setup.sh
 ```
 
-`agent.env` is ignored by git. Keep machine-local values there, such as `AGENT_NAME` or a workstation public SSH key.
+`agent.env` is ignored by git. Keep machine-local values there, such as `AGENT_NAME`, `AGENT_USER`, or a workstation public SSH key.
 
 ## What It Installs
 
 - `git`, `nodejs`, `npm`, `python3`, `sudo`, `openssh-server`, `tmux`, `avahi-daemon`, `bubblewrap`, `curl`, and `ca-certificates`
-- Headless SSH access under `ssh/`, targeting `AGENT_NAME@AGENT_NAME.local`
+- Headless SSH access under `ssh/`, targeting `AGENT_USER@AGENT_HOSTNAME.local`
 - `@openai/codex` via `npm install -g`
 - High-autonomy Codex defaults under `codex/`:
   - `sandbox_mode = "danger-full-access"`
@@ -63,7 +63,7 @@ Preview shell actions:
 Set the intended host/user/mDNS target:
 
 ```sh
-./agent-setup.sh --agent-name codex-agent
+./agent-setup.sh --agent-name my-agent --ssh-user my-user
 ```
 
 Use a specific skills repo ref:
@@ -83,7 +83,7 @@ Install only shell dependencies and skills, then stop before Codex login/bootstr
 Run only the SSH setup entrypoint:
 
 ```sh
-AGENT_NAME=codex-agent ./ssh/setup-ssh.sh --dry-run
+AGENT_NAME=my-agent AGENT_USER=my-user ./ssh/setup-ssh.sh --dry-run
 ```
 
 See `ssh/README.md` for intent, prerequisites, validation, and recovery.

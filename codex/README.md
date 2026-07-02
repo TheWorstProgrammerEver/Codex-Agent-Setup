@@ -51,7 +51,9 @@ sandbox_mode = "danger-full-access"
 approval_policy = "never"
 web_search = "live"
 
-[projects."<resolved-home-directory>"]
+# Note: my-user is the local username on the agent host. It can differ from
+# the durable agent identity, such as my-agent.
+[projects."/home/my-user"]
 trust_level = "trusted"
 ```
 
