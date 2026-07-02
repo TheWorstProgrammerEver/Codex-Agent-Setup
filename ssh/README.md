@@ -5,23 +5,23 @@ Purpose: make a Raspberry Pi or always-on Linux Codex agent reachable and recove
 The intended target is:
 
 ```text
-AGENT_NAME@AGENT_NAME.local
+AGENT_USER@AGENT_HOSTNAME.local
 ```
 
-Run this after the local user and network exist. The script assumes `sudo` works for the current operator, the target SSH user already exists, and any workstation public key is available as a public key line or file. Never provide or record private keys.
+Run this after the local user and network exist. `AGENT_NAME` is the durable agent identity, `AGENT_HOSTNAME` defaults to it, and `AGENT_USER` is the local host user. The script assumes `sudo` works for the current operator, the target SSH user already exists, and any workstation public key is available as a public key line or file. Never provide or record private keys.
 
 ## Entrypoint
 
 Preview:
 
 ```sh
-AGENT_NAME=icarus ./ssh/setup-ssh.sh --dry-run
+AGENT_NAME=my-agent AGENT_USER=my-user ./ssh/setup-ssh.sh --dry-run
 ```
 
 First supervised setup, keeping password SSH open until a workstation key is confirmed:
 
 ```sh
-AGENT_NAME=icarus ./ssh/setup-ssh.sh \
+AGENT_NAME=my-agent AGENT_USER=my-user ./ssh/setup-ssh.sh \
   --authorized-key-file /path/to/workstation.pub \
   --enable-password-auth \
   --yes
@@ -30,7 +30,7 @@ AGENT_NAME=icarus ./ssh/setup-ssh.sh \
 After public-key-only login works from the workstation, disable password SSH:
 
 ```sh
-AGENT_NAME=icarus ./ssh/setup-ssh.sh \
+AGENT_NAME=my-agent AGENT_USER=my-user ./ssh/setup-ssh.sh \
   --disable-password-auth \
   --yes
 ```
@@ -58,13 +58,13 @@ systemctl is-active avahi-daemon || true
 From the workstation:
 
 ```sh
-ssh AGENT_NAME@AGENT_NAME.local
+ssh my-user@my-agent.local
 ```
 
 If `.local` resolution fails, use an IP from `hostname -I`:
 
 ```sh
-ssh AGENT_NAME@LAN-IP
+ssh my-user@LAN-IP
 ```
 
 ## What It Does
@@ -85,7 +85,7 @@ PermitRootLogin no
 PubkeyAuthentication yes
 PasswordAuthentication yes|no
 KbdInteractiveAuthentication no
-AllowUsers AGENT_NAME
+AllowUsers my-user
 ```
 
 ## Validation
@@ -100,7 +100,7 @@ sudo sshd -T | grep -E '^(permitrootlogin|pubkeyauthentication|passwordauthentic
 From the workstation, confirm public-key-only login:
 
 ```sh
-ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no AGENT_NAME@AGENT_NAME.local
+ssh -o PreferredAuthentications=publickey -o PasswordAuthentication=no my-user@my-agent.local
 ```
 
 Then attach to Codex:
@@ -135,6 +135,6 @@ Backups from main config edits use paths like:
 /usr/local/etc/sshd_config.codex-bootstrap-YYYYMMDDHHMMSS.bak
 ```
 
-For `.local` failures, verify `avahi-daemon` is active, confirm the host name, check the workstation is on the same LAN, and fall back to `ssh AGENT_NAME@LAN-IP` while mDNS is fixed.
+For `.local` failures, verify `avahi-daemon` is active, confirm the host name, check the workstation is on the same LAN, and fall back to `ssh my-user@LAN-IP` while mDNS is fixed.
 
 Durable notes belong in `~/REMOTE_ACCESS.md`. Record host/user/connection commands and validation state there, never private keys, tokens, passwords, or recovery codes.
