@@ -15,13 +15,13 @@ Run this after the local user and network exist. The script assumes `sudo` works
 Preview:
 
 ```sh
-AGENT_NAME=icarus ./ssh/setup-ssh.sh --dry-run
+AGENT_NAME=codex-agent ./ssh/setup-ssh.sh --dry-run
 ```
 
 First supervised setup, keeping password SSH open until a workstation key is confirmed:
 
 ```sh
-AGENT_NAME=icarus ./ssh/setup-ssh.sh \
+AGENT_NAME=codex-agent ./ssh/setup-ssh.sh \
   --authorized-key-file /path/to/workstation.pub \
   --enable-password-auth \
   --yes
@@ -30,7 +30,7 @@ AGENT_NAME=icarus ./ssh/setup-ssh.sh \
 After public-key-only login works from the workstation, disable password SSH:
 
 ```sh
-AGENT_NAME=icarus ./ssh/setup-ssh.sh \
+AGENT_NAME=codex-agent ./ssh/setup-ssh.sh \
   --disable-password-auth \
   --yes
 ```

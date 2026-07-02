@@ -51,7 +51,7 @@ sandbox_mode = "danger-full-access"
 approval_policy = "never"
 web_search = "live"
 
-[projects."/home/agent"]
+[projects."<resolved-home-directory>"]
 trust_level = "trusted"
 ```
 

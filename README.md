@@ -63,7 +63,7 @@ Preview shell actions:
 Set the intended host/user/mDNS target:
 
 ```sh
-./agent-setup.sh --agent-name icarus
+./agent-setup.sh --agent-name codex-agent
 ```
 
 Use a specific skills repo ref:
@@ -83,7 +83,7 @@ Install only shell dependencies and skills, then stop before Codex login/bootstr
 Run only the SSH setup entrypoint:
 
 ```sh
-AGENT_NAME=icarus ./ssh/setup-ssh.sh --dry-run
+AGENT_NAME=codex-agent ./ssh/setup-ssh.sh --dry-run
 ```
 
 See `ssh/README.md` for intent, prerequisites, validation, and recovery.
