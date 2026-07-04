@@ -176,6 +176,7 @@ if [[ "$DRY_RUN" == "1" ]]; then
 fi
 
 "$repo_root/scripts/install-packages.sh"
+"$repo_root/scripts/install-node-lts.sh"
 "$repo_root/ssh/setup-ssh.sh" "${ssh_setup_args[@]}"
 "$repo_root/scripts/install-codex.sh"
 

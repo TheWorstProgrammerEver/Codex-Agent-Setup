@@ -2,12 +2,13 @@
 
 Bootstrap scripts for a fresh Raspberry Pi or similar Linux host that will be dedicated to Codex.
 
-The setup is intentionally split into four phases:
+The setup is intentionally split into five phases:
 
 1. Shell scripts install the minimum system dependencies.
-2. `ssh/setup-ssh.sh` configures hostname, SSH/tmux access, mDNS, workstation keys, and `~/REMOTE_ACCESS.md`.
-3. `codex/setup-codex-permissions.sh` configures Codex CLI autonomy, trusted workspace defaults, durable notes, and optional passwordless sudo.
-4. The remaining reusable bootstrap skills are installed for future Codex sessions.
+2. `scripts/install-node-lts.sh` installs the latest Node.js LTS from the official Node.js release index.
+3. `ssh/setup-ssh.sh` configures hostname, SSH/tmux access, mDNS, workstation keys, and `~/REMOTE_ACCESS.md`.
+4. `codex/setup-codex-permissions.sh` configures Codex CLI autonomy, trusted workspace defaults, durable notes, and optional passwordless sudo.
+5. The remaining reusable bootstrap skills are installed for future Codex sessions.
 
 ## Quick Start
 
@@ -21,7 +22,8 @@ $EDITOR agent.env
 
 ## What It Installs
 
-- `git`, `nodejs`, `npm`, `python3`, `sudo`, `openssh-server`, `tmux`, `avahi-daemon`, `bubblewrap`, `curl`, and `ca-certificates`
+- `git`, `python3`, `sudo`, `openssh-server`, `tmux`, `avahi-daemon`, `bubblewrap`, `curl`, and `ca-certificates`
+- Latest Node.js LTS from `https://nodejs.org/dist/index.json`, installed under `/opt/node-lts` with `node`, `npm`, `npx`, and `corepack` symlinked into `/usr/local/bin`
 - Headless SSH access under `ssh/`, targeting `AGENT_USER@AGENT_HOSTNAME.local`
 - `@openai/codex` via `npm install -g`
 - High-autonomy Codex defaults under `codex/`:
@@ -40,11 +42,19 @@ This bootstrap flow was first validated on:
 - Raspberry Pi 5 Model B Rev 1.0
 - Debian GNU/Linux 12 bookworm
 - Linux `6.6.31+rpt-rpi-2712` on `aarch64`
-- Node.js `v18.20.4`
-- npm `9.2.0`
+- Node.js `v24.18.0`
+- npm `11.16.0`
 - Codex CLI `0.142.3`
 
-Other Debian-like hosts should work if they provide `apt-get`, `systemd`, `sudo`, Node.js/npm, OpenSSH, tmux, and mDNS support through Avahi.
+Other Debian-like hosts should work if they provide `apt-get`, `systemd`, `sudo`, OpenSSH, tmux, and mDNS support through Avahi. Debian stable's packaged `nodejs` major version can lag behind modern app tooling such as Vite, Vitest, and Supabase. This bootstrap therefore installs a system-level Node.js LTS runtime directly from Node.js release metadata instead of relying on the distro `nodejs` package.
+
+## Node.js LTS Runtime
+
+`scripts/install-node-lts.sh` reads the official Node.js distribution index and chooses the first release whose `lts` field is set. That intentionally excludes Current releases until Node.js promotes them to LTS. As of 2026-07-04, this resolves Node 24 LTS (`Krypton`) rather than Node 26 Current.
+
+The installer downloads the matching Linux binary tarball and `SHASUMS256.txt`, verifies the tarball checksum, installs the release under `/opt/node-lts/versions/<version>`, updates `/opt/node-lts/current`, and manages `/usr/local/bin/node`, `/usr/local/bin/npm`, `/usr/local/bin/npx`, and `/usr/local/bin/corepack`. This makes the runtime available to interactive shells and non-interactive/systemd-launched setup tasks without depending on shell profile files.
+
+Maintenance is idempotent: rerun `./agent-setup.sh` or `./scripts/install-node-lts.sh` to move to the latest LTS release. Set `NODE_LTS_LINE=24` only when deliberately pinning a major LTS line; remove that override to resume latest-LTS tracking. Set `NODE_LTS_FORCE=1` to reinstall the resolved version.
 
 ## Common Usage
 
@@ -78,6 +88,18 @@ Install only shell dependencies and skills, then stop before Codex login/bootstr
 
 ```sh
 ./agent-setup.sh --skip-codex-login --skip-codex-bootstrap
+```
+
+Run only the Node.js LTS installer:
+
+```sh
+./scripts/install-node-lts.sh
+```
+
+Run a Vite/Vitest/Supabase-style package smoke check:
+
+```sh
+./scripts/smoke-node-tooling.sh
 ```
 
 Run only the SSH setup entrypoint:

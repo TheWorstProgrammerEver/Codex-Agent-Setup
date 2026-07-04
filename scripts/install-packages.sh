@@ -3,8 +3,6 @@ set -euo pipefail
 
 packages=(
   git
-  nodejs
-  npm
   python3
   sudo
   openssh-server
