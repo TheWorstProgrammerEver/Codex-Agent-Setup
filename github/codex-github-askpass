@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+prompt="${1:-}"
+
+case "$prompt" in
+  *Username*|*username*)
+    printf 'x-access-token\n'
+    ;;
+  *Password*|*password*)
+    exec codex-github-token
+    ;;
+  *)
+    printf '\n'
+    ;;
+esac

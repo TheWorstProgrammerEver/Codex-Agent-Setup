@@ -3,6 +3,8 @@ set -euo pipefail
 
 packages=(
   git
+  gh
+  openssl
   python3
   sudo
   openssh-server
