@@ -32,6 +32,8 @@ $EDITOR agent.env
   - `web_search = "live"`
   - trusted workspace entry for the configured home/workspace
 - Durable notes files: `~/AGENTS.md`, `~/CODEX_TODO.md`, and `~/codex-notes/`
+  - the shared `AGENTS.md` managed block is seeded from
+    `Codex-Shared-Durable-Notes/AGENTS.shared.md`
 - The remaining bootstrap skills from the skills repo:
   - `manage-durable-notes`
 
@@ -84,6 +86,13 @@ Use a specific skills repo ref:
   --skills-ref main
 ```
 
+Use a specific shared AGENTS guidance ref or local source file:
+
+```sh
+./agent-setup.sh --shared-agents-guidance-ref main
+./agent-setup.sh --shared-agents-guidance-file ./AGENTS.shared.md
+```
+
 Install only shell dependencies and skills, then stop before Codex login/bootstrap:
 
 ```sh
@@ -123,3 +132,7 @@ See `codex/README.md` for scope, risk posture, validation, rollback, and securit
 - Do not commit private SSH keys, Codex auth, GitHub App private keys, API keys, tokens, passwords, or recovery codes.
 - Public SSH keys are acceptable in local `agent.env` when useful for unattended SSH setup.
 - Password SSH should remain enabled only until public-key login has been confirmed, then disabled with `ssh/setup-ssh.sh --disable-password-auth --yes`.
+- The shared AGENTS guidance source lives in
+  `https://github.com/TheWorstProgrammerEver/Codex-Shared-Durable-Notes` at
+  `AGENTS.shared.md`. Local host-specific `AGENTS.md` content must stay outside
+  the managed `SHARED_AGENT_GUIDANCE` markers.
