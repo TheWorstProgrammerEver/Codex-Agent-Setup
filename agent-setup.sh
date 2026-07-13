@@ -20,6 +20,7 @@ Options:
   --disable-password-auth       Disable SSH password auth after key login is ready.
   --skip-codex-login            Do not run `codex login --device-auth`.
   --skip-codex-bootstrap        Do not configure Codex permissions and durable notes.
+  --skip-github-app-helpers     Do not install GitHub App helper scripts.
   --codex-workspace PATH        Workspace to mark trusted. Defaults to $HOME.
   --dry-run                     Print shell actions without changing the host.
   -h, --help                    Show this help.
@@ -50,6 +51,7 @@ ENABLE_PASSWORDLESS_SUDO="${ENABLE_PASSWORDLESS_SUDO:-0}"
 DISABLE_PASSWORD_AUTH="${DISABLE_PASSWORD_AUTH:-0}"
 SKIP_CODEX_LOGIN="${SKIP_CODEX_LOGIN:-0}"
 RUN_CODEX_BOOTSTRAP="${RUN_CODEX_BOOTSTRAP:-1}"
+RUN_GITHUB_APP_HELPERS="${RUN_GITHUB_APP_HELPERS:-1}"
 CODEX_WORKSPACE="${CODEX_WORKSPACE:-$HOME}"
 DRY_RUN="${DRY_RUN:-0}"
 
@@ -107,6 +109,10 @@ while (($#)); do
       ;;
     --skip-codex-bootstrap)
       RUN_CODEX_BOOTSTRAP=0
+      shift
+      ;;
+    --skip-github-app-helpers)
+      RUN_GITHUB_APP_HELPERS=0
       shift
       ;;
     --codex-workspace)
@@ -179,6 +185,16 @@ fi
 "$repo_root/scripts/install-node-lts.sh"
 "$repo_root/ssh/setup-ssh.sh" "${ssh_setup_args[@]}"
 "$repo_root/scripts/install-codex.sh"
+
+if [[ "$RUN_GITHUB_APP_HELPERS" == "1" ]]; then
+  github_helper_args=()
+
+  if [[ "$DRY_RUN" == "1" ]]; then
+    github_helper_args+=(--dry-run)
+  fi
+
+  "$repo_root/github/install-github-app-helpers.sh" "${github_helper_args[@]}"
+fi
 
 if [[ "$RUN_CODEX_BOOTSTRAP" == "1" ]]; then
   codex_setup_args=(--dedicated-host --yes --home "$HOME" --workspace "$CODEX_WORKSPACE")

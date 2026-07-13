@@ -23,10 +23,11 @@ $EDITOR agent.env
 
 ## What It Installs
 
-- `git`, `python3`, `sudo`, `openssh-server`, `tmux`, `avahi-daemon`, `bubblewrap`, `curl`, and `ca-certificates`
+- `git`, `gh`, `openssl`, `python3`, `sudo`, `openssh-server`, `tmux`, `avahi-daemon`, `bubblewrap`, `curl`, and `ca-certificates`
 - Latest Node.js LTS from `https://nodejs.org/dist/index.json`, installed under `/opt/node-lts` with `node`, `npm`, `npx`, and `corepack` symlinked into `/usr/local/bin`
 - Headless SSH access under `ssh/`, targeting `AGENT_USER@AGENT_HOSTNAME.local`
 - `@openai/codex` via `npm install -g` under the target user's npm global prefix, defaulting to `~/.local`
+- GitHub App helpers under `github/`, installed into `~/.local/bin`
 - High-autonomy Codex defaults under `codex/`:
   - `sandbox_mode = "danger-full-access"`
   - `approval_policy = "never"`
@@ -124,6 +125,12 @@ Install only shell dependencies and skills, then stop before Codex login/bootstr
 ./agent-setup.sh --skip-codex-login --skip-codex-bootstrap
 ```
 
+Skip GitHub App helper installation:
+
+```sh
+./agent-setup.sh --skip-github-app-helpers
+```
+
 Run only the Node.js LTS installer:
 
 ```sh
@@ -157,6 +164,21 @@ Run only the Codex permissions entrypoint:
 ```
 
 See `codex/README.md` for scope, risk posture, validation, rollback, and security notes.
+
+Install only the GitHub App helpers:
+
+```sh
+./github/install-github-app-helpers.sh
+```
+
+Validate that `CODEX_GH_PERMISSIONS_JSON` passes through `codex-gh` unchanged:
+
+```sh
+./github/validate-codex-gh-permissions.sh OWNER/REPO
+```
+
+See `github/README.md` for required local GitHub App configuration, security
+notes, and the equivalent manual validation commands.
 
 ## Notes
 

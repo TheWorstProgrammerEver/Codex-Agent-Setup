@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  cat <<'EOF'
+Usage: codex-gh [gh arguments...]
+
+Runs GitHub CLI with a short-lived GitHub App installation token.
+
+Environment overrides:
+  CODEX_GH_PERMISSIONS_JSON  Permissions JSON passed verbatim to
+                             codex-github-token --permissions-json.
+                             Default: {"contents":"write","pull_requests":"write"}
+  CODEX_GH_REPO              Restrict token to OWNER/REPO.
+EOF
+}
+
+if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
+  usage
+  exit 0
+fi
+
+if ! command -v gh >/dev/null 2>&1; then
+  printf 'Missing GitHub CLI: install the gh package first.\n' >&2
+  exit 127
+fi
+
+if ! command -v codex-github-token >/dev/null 2>&1; then
+  printf 'Missing token helper: codex-github-token is not on PATH.\n' >&2
+  exit 127
+fi
+
+if [[ -z "${GH_TOKEN:-}" && -z "${GITHUB_TOKEN:-}" ]]; then
+  default_permissions_json='{"contents":"write","pull_requests":"write"}'
+  permissions_json="${CODEX_GH_PERMISSIONS_JSON:-$default_permissions_json}"
+  token_args=(--permissions-json "$permissions_json")
+
+  if [[ -n "${CODEX_GH_REPO:-}" ]]; then
+    token_args+=(--repo "$CODEX_GH_REPO")
+  fi
+
+  export GH_TOKEN
+  GH_TOKEN="$(codex-github-token "${token_args[@]}")"
+fi
+
+exec gh "$@"
